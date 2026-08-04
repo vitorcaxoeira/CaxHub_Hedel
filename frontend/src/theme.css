@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-ring: var(--ring);
+
+  /* Camadas de sobreposição — maior valor já usado no app até aqui era z-50 (Toast,
+     antigo menu de contexto do cronograma); popover fica acima de tudo (dropdowns,
+     tooltips), já que sempre precisa vencer modal (z-30) e headers sticky (z-20/z-40).
+     Namespace correto no Tailwind v4 pra gerar a utility `z-popover` é `--z-index-*`,
+     não `--z-*` (esse é só o valor puro, sem virar classe). */
+  --z-index-popover: 60;
+}
+
+/* ---------- TEMA CLARO ---------- */
+:root {
+  --background: #F1F3EF;
+  --surface: #FFFFFF;
+  --surface-2: #E8ECE4;
+  --foreground: #10231F;
+  --muted: #5A6B63;
+  --border: #D4DACE;
+  --primary: #0E6B4F;
+  --primary-foreground: #FFFFFF;
+  --destructive: #A83C2C;
+  --destructive-foreground: #FFFFFF;
+  --success: #0E6B4F;
+  --success-foreground: #FFFFFF;
+  --warning: #B87A0B;
+  --warning-foreground: #1A1200;
+  --ring: #0E6B4F;
+}
+
+/* ---------- TEMA ESCURO (default da aplicação) ---------- */
+.dark {
+  --background: #0B120F;
+  --surface: #131C18;
+  --surface-2: #1B2620;
+  --foreground: #E4EBE5;
+  --muted: #8A9A91;
+  --border: #2A3830;
+  --primary: #3FB98A;
+  --primary-foreground: #0B120F;
+  --destructive: #E4705C;
+  --destructive-foreground: #0B120F;
+  --success: #3FB98A;
+  --success-foreground: #0B120F;
+  --warning: #E0A537;
+  --warning-foreground: #0B120F;
+  --ring: #3FB98A;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,35 @@
+# CaxHub_Hedel — sobe SÓ backend e frontend. O Postgres é o do CaxHub, compartilhado, com
+# separação por SCHEMA (`hedel`), definida na DATABASE_URL do backend/.env.
+#
+# Por isso o serviço `db` não aparece aqui e a rede é externa: os containers deste projeto
+# entram na rede que o compose do CaxHub já criou, e alcançam o Postgres pelo hostname `db`.
+#
+# Consequência assumida da escolha de banco único: um restore do CaxHub arrasta o Hedel
+# junto. A rotina de backup precisa dumpar os dois schemas.
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    networks:
+      - caxhub
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # 8080 é do CaxHub.
+      - "8081:80"
+    networks:
+      - caxhub
+
+networks:
+  caxhub:
+    external: true
+    name: caxhub_default

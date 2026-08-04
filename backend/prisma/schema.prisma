@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String?
+  nome         String
+  fotoUrl      String?
+  roleId       Int
+  role         Role     @relation(fields: [roleId], references: [id])
+  createdAt    DateTime @default(now())
+
+  /// "pendente" (convite ainda não aceito, sem senha) | "ativo"
+  status          String    @default("ativo")
+  inviteToken     String?   @unique
+  inviteExpiresAt DateTime?
+
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  users       User[]
+}
+
+// Registra cada execução do job de sincronização SOAP -> Postgres.
+model SyncLog {
+  id      Int      @id @default(autoincrement())
+  jobName String
+  query   String
+  status  String
+  message String?
+  runAt   DateTime @default(now())
+  // Resultado da varredura de removidos (sync/varrerRemovidos.ts) desta execução, em
+  // forma estruturada — o `message` acima continua tendo o resumo legível. Existe porque
+  // em modo "simular" nada é gravado em removidoEmSenior, e sem isso o painel não teria
+  // como mostrar o que a simulação detectou. NULL nos dois = execução sem varredura
+  // (job ainda não adaptado, sync incremental, ou log anterior ao mecanismo).
+  varreduraModo       String?
+  varreduraDetectados Int?
+  // Instante de referência da varredura (o mesmo carimbado em vistoEmSync). Guardado
+  // porque só com ele dá pra LISTAR os candidatos depois: quem tem vistoEmSync anterior
+  // a isso não veio na última consulta. Não dá pra deduzir de MAX(vistoEmSync) na
+  // tabela, porque um sync parcial (por cliente) carimba um subconjunto com um instante
+  // mais novo e envenenaria o máximo.
+  varreduraInicio     DateTime?
+}
+
+// Espelho local da tabela E070EMP do Senior ERP (empresas cadastradas).
+model Empresa {
+  codemp  Int      @id
+  nomemp  String
+  sigemp  String   @db.VarChar(30)
+  filiais Filial[]
+
+  @@map("empresa")
+}
+
+// Espelho local da tabela E070FIL do Senior ERP (filiais de cada empresa).
+model Filial {
+  codemp Int
+  codfil Int
+  nomfil String
+  sigfil String
+
+  empresa Empresa @relation(fields: [codemp], references: [codemp])
+
+  @@id([codemp, codfil])
+  @@map("filial")
+}
+
+// Espelho local da tabela E085CLI do Senior ERP (clientes cadastrados).
+model Cliente {
+  codcli Int    @id
+  nomcli String
+  apecli String
+  sencli String
+  tipcli String
+  tipmer String
+  tipemc Int
+  codram String
+  insest String
+  cgccpf BigInt
+  endcli String
+  cplend String
+  cepcli Int
+  baicli String
+  cidcli String
+  sigufs String
+  codpai String
+
+  titulosReceber TituloReceber[]
+
+  @@map("clientes")
+}
+
+// Espelho local da tabela E002TPT do Senior ERP (Tabelas - Tipos de Título).
+model TipoTitulo {
+  codtpt String  @id @db.VarChar(3)
+  destpt String  @db.VarChar(40)
+  abrtpt String  @db.VarChar(5)
+  /// Domínio "LSomTit": D=Soma Duplicatas, O=Soma Outros Títulos, C=Soma Créditos/Pgto. Indevidos
+  recsom String  @db.VarChar(1)
+  /// Domínio "LSomTit": D=Soma Duplicatas, O=Soma Outros Títulos, C=Soma Créditos/Pgto. Indevidos
+  pagsom String  @db.VarChar(1)
+  /// Domínio "LAplGrp": A=Ambos, R=Contas a Receber, P=Contas a Pagar
+  apltpt String? @db.VarChar(1)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sittpt String? @db.VarChar(1)
+
+  titulosReceber TituloReceber[]
+
+  @@map("tipos_titulo")
+}
+
+// Espelho local da tabela E301TCR do Senior ERP (C. Receber - Títulos - Dados Gerais).
+model TituloReceber {
+  codemp Int
+  codfil Int
+  numtit String   @db.VarChar(15)
+  codtpt String   @db.VarChar(3)
+  codcli Int
+  /// Domínio "LSitTit": AO=Aberto ao Órgão de Proteção ao Crédito, AN=Aberto Negociação, AA=Aberto Advogado, AB=Aberto Normal, AC=Aberto Cartório, AE=Aberto Encontro de Contas, AI=Aberto Impostos, AJ=Aberto Retorno Jurídico, AP=Aberto Protestado, AR=Aberto Representante, AS=Aberto Suspenso, AV=Aberto Gestão de Pessoas, AX=Aberto Externo, CA=Cancelado, CE=Aberto CE (Preparação Cobrança Escritural), CO=Aberto Cobrança, LQ=Liquidado Normal, LC=Liquidado Cartório, LI=Liquidado Impostos, LM=Liquidado Compensado, LO=Liquidado Cobrança, LP=Liquidado Protestado, LS=Liquidado Substituído, LV=Liquidado Gestão de Pessoas, LX=Liquidado Externo, PE=Aberto PE (Pagamento Eletrônico)
+  sittit String   @db.VarChar(2)
+  datemi DateTime @db.Date
+  vctori DateTime @db.Date
+  vctpro DateTime @db.Date
+  vlrori Decimal  @db.Decimal(15, 2)
+  vlrabe Decimal? @db.Decimal(15, 2)
+  codpor String?  @db.VarChar(4)
+
+  cliente    Cliente                  @relation(fields: [codcli], references: [codcli])
+  tipoTitulo TipoTitulo               @relation(fields: [codtpt], references: [codtpt])
+  portador   Portador?                @relation(fields: [codemp, codpor], references: [codemp, codpor])
+  movimentos MovimentoTituloReceber[]
+
+  @@id([codemp, codfil, numtit, codtpt])
+  @@map("titulos_receber")
+}
+
+// Espelho local da tabela E301MCR do Senior ERP (C. Receber - Títulos - Movimentos).
+model MovimentoTituloReceber {
+  codemp Int
+  codfil Int
+  numtit String    @db.VarChar(15)
+  codtpt String    @db.VarChar(3)
+  seqmov Int
+  codtns String    @db.VarChar(5)
+  datmov DateTime  @db.Date
+  datpgt DateTime? @db.Date
+  codfpg Int?
+  vlrmov Decimal   @db.Decimal(15, 2)
+  vlrliq Decimal?  @db.Decimal(15, 2)
+  vlrjrs Decimal?  @db.Decimal(15, 2)
+  vlrmul Decimal?  @db.Decimal(15, 2)
+  vlrdsc Decimal?  @db.Decimal(15, 2)
+  diaatr Int?
+  codpor String?   @db.VarChar(4)
+  codcrt String?   @db.VarChar(2)
+  codccu String?   @db.VarChar(9)
+  numcco String?   @db.VarChar(14)
+
+  tituloReceber TituloReceber @relation(fields: [codemp, codfil, numtit, codtpt], references: [codemp, codfil, numtit, codtpt])
+  transacao     Transacao     @relation(fields: [codemp, codtns], references: [codemp, codtns])
+
+  @@id([codemp, codfil, numtit, codtpt, seqmov])
+  @@map("movimentos_receber")
+}
+
+// Espelho local da tabela E090REP do Senior ERP (Cadastros - Representantes).
+model Representante {
+  codrep Int     @id
+  nomrep String  @db.VarChar(100)
+  aperep String  @db.VarChar(50)
+  /// Domínio "LJurFis": J=Pessoa Jurídica, F=Pessoa Física
+  tiprep String  @db.VarChar(1)
+  cgccpf BigInt?
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitrep String  @db.VarChar(1)
+  cidrep String? @db.VarChar(60)
+  sigufs String? @db.VarChar(2)
+
+  @@map("representantes")
+}
+
+// Espelho local da tabela E044CCU do Senior ERP (Cadastros - Centros de Custos).
+model CentroCusto {
+  codemp Int
+  codccu String  @db.VarChar(9)
+  desccu String  @db.VarChar(80)
+  abrccu String  @db.VarChar(20)
+  /// Domínio "LTipCtc": 1=Produtivo/Operacional Indireto, 2=Produtivo/Operacional Direto, 3=Administrativo, 4=Comercial, 5=Financeiro
+  tipccu Int
+  ccupai String? @db.VarChar(9)
+  /// Domínio "LAnaSin": A=Analítico(a), S=Sintético(a)
+  anasin String? @db.VarChar(1)
+
+  @@id([codemp, codccu])
+  @@map("centros_custo")
+}
+
+// Espelho local da tabela E600MCC do Senior ERP (Tesouraria - Movimento - Movimentações das Contas).
+model MovimentoConta {
+  codemp Int
+  numcco String   @db.VarChar(14)
+  datmov DateTime @db.Date
+  seqmov Int
+  codfil Int?
+  vlrmov Decimal  @db.Decimal(15, 2)
+  debcre String   @db.VarChar(1)
+  hismov String?  @db.VarChar(100)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitmcc String?  @db.VarChar(1)
+  filmcr Int?
+  nummcr String?  @db.VarChar(15)
+  tptmcr String?  @db.VarChar(3)
+  seqmcr Int?
+  codpor String?  @db.VarChar(4)
+
+  @@id([codemp, numcco, datmov, seqmov])
+  @@map("movimentos_conta")
+}
+
+// Espelho local da tabela E091PLF do Senior ERP (Tabelas - Plano Financeiro - Contas).
+model NaturezaFinanceira {
+  codemp Int
+  ctafin Int
+  descta String @db.VarChar(80)
+  abrcta String @db.VarChar(20)
+  /// Domínio "LGruCta": A=Ativo (Contábil - Devedora), P=Passivo (Contábil - Credora), D=Despesas (Contábil - Devedora), R=Receitas (Contábil - Credora), X=Ambas (Contábil - Desp./Rec.), M=Receitas Financeiras, N=Despesas Financeiras, U=Conta Auxiliar, L=Patrimônio Líquido, V=Custo de Venda, C=Custo de Produção, S=Custo de Ordem Dedutora, E=Custo de Ordem Credora, O=Outros, T=Contas de Compensação
+  defgru String @db.VarChar(1)
+  /// Domínio "LAnaSin": A=Analítico(a), S=Sintético(a)
+  anasin String @db.VarChar(1)
+  /// Domínio "LNatCtb": D=Devedora, C=Credora
+  natfin String @db.VarChar(1)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitfin String @db.VarChar(1)
+
+  @@id([codemp, ctafin])
+  @@map("naturezas_financeiras")
+}
+
+// Espelho local da tabela E039POR do Senior ERP (Cadastros - Portadores).
+model Portador {
+  codemp Int
+  codpor String  @db.VarChar(4)
+  despor String  @db.VarChar(30)
+  abrpor String  @db.VarChar(10)
+  codban String? @db.VarChar(3)
+  codage String? @db.VarChar(7)
+  numcco String? @db.VarChar(14)
+
+  titulosReceber TituloReceber[]
+
+  @@id([codemp, codpor])
+  @@map("portadores")
+}
+
+// Espelho local da tabela E031MOE do Senior ERP (Tabelas - Moedas).
+model Moeda {
+  codmoe String @id @db.VarChar(3)
+  desmoe String @db.VarChar(30)
+  sigmoe String @db.VarChar(5)
+  /// Domínio "LTipMoe": V=Valor, D=Índice, P=Percentual, E=Especial, H=Hora
+  tipmoe String @db.VarChar(1)
+
+  @@map("moedas")
+}
+
+// Espelho local da tabela E001TNS do Senior ERP (Tabelas - Transações).
+model Transacao {
+  codemp Int
+  codtns String  @db.VarChar(5)
+  destns String  @db.VarChar(60)
+  /// Domínio "LTipBai": PG=Pagamento, DV=Devolução, AB=Abatimento, CA=Cancelamento, CR=Baixa Crédito, CP=Compensação, LP=Lucros e Perdas, SU=Substituição, NA=NÃO É BAIXA
+  rectpb String? @db.VarChar(2)
+
+  movimentos MovimentoTituloReceber[]
+
+  @@id([codemp, codtns])
+  @@map("transacoes")
+}
+
+// Espelho local da tabela E600CCO do Senior ERP (Tesouraria - Conta - Cadastro).
+model ContaCorrente {
+  codemp Int
+  numcco String @db.VarChar(14)
+  descco String @db.VarChar(30)
+  abrcco String @db.VarChar(10)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitcco String @db.VarChar(1)
+
+  @@id([codemp, numcco])
+  @@map("contas_correntes")
+}
+
+// Espelho local da tabela E120PED do Senior ERP (Vendas - Pedidos - Dados Gerais).
+model Pedido {
+  codemp Int
+  codfil Int
+  numped Int
+  /// Domínio "LTipPed": 1=Normal, 2=Automático, 3=Rascunho, 4=Orçamento, 5=Previsão, 6=Pronta Entrega, 7=Aproveitamento Pedido Pronta Entrega, 8=Assistência Técnica, 9=Reposição
+  tipped Int?
+  /// Domínio "LPrcPed": 1=Digitado - Normal, 2=Via Internet, 3=Via Importação, 4=Via Automação, 5=Digitado - Distribuição, 6=Via Processos Automáticos - Ordem de Compra, 7=Via Processos Automáticos - Gerais, 8=Via Contrato de Licitação, 9=Via Integração Varejo (Lojas), 10=Via devolução com quantidade excedente
+  prcped Int?
+  tnspro String? @db.VarChar(5)
+  tnsser String? @db.VarChar(5)
+  datemi DateTime @db.Date
+  // Minutos desde meia-noite (dicionário do Senior reporta como "hora", mas o dado real
+  // que volta pelo SOAP é inteiro). Pra
+  // formatar: Math.trunc(v/60) + ":" + v%60.
+  horemi Int?
+  datprv DateTime? @db.Date
+  obsped String? @db.VarChar(999)
+  // Valor líquido do pedido.
+  vlrliq Decimal? @db.Decimal(15, 2)
+  // Observação do motivo da situação do pedido (contextual a sitped).
+  obsmot String? @db.VarChar(250)
+  codcli Int
+  pedcli String? @db.VarChar(20)
+  codcpg String @db.VarChar(6)
+  codfpg Int?
+  /// Domínio "LSitPed": 1=Aberto Total, 2=Aberto Parcial, 3=Suspenso, 4=Liquidado, 5=Cancelado, 6=Aguardando Integração WMS, 7=Em Transmissão, 8=Preparação Análise ou NF, 9=Não Fechado
+  sitped Int
+  // Carimbo da execução de sync que viu esta linha na origem pela última vez. NULL =
+  // nunca vista por uma sync. A varredura de removidos (backend/src/sync/varrerRemovidos.ts)
+  // compara com `lt` estrito, e `NULL < x` é NULL em SQL — linha nunca carimbada é imune
+  // por construção, o que protege registros que nasçam no CaxHub.
+  vistoEmSync      DateTime? @map("visto_em_sync") @db.Timestamptz(6)
+  // Quando a varredura constatou que a linha sumiu da origem (foi excluída no Senior).
+  // NULL = viva. Volta a NULL sozinho se a linha reaparecer, porque todo upsert do sync
+  // grava NULL aqui. Nunca há DELETE físico: ver comentário em varrerRemovidos.ts.
+  removidoEmSenior DateTime? @map("removido_em_senior") @db.Timestamptz(6)
+  @@id([codemp, codfil, numped])
+
+  @@map("pedidos")
+}
+
+// Espelho local da tabela E066FPG do Senior ERP (Tabelas - Formas de Pagamento ).
+model FormaPagamento {
+  codemp Int
+  codfpg Int
+  desfpg String @db.VarChar(30)
+  abrfpg String @db.VarChar(10)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitfpg String @db.VarChar(1)
+  @@id([codemp, codfpg])
+
+  @@map("formas_pagamento")
+}
+
+// Espelho local da tabela E028CPG do Senior ERP (Tabelas - Condição de Pagamento).
+model CondicaoPagamento {
+  codemp Int
+  codcpg String @db.VarChar(6)
+  descpg String @db.VarChar(50)
+  abrcpg String @db.VarChar(10)
+  /// Domínio "LAplCpg": V=Vendas, C=Compras, A=Ambos
+  aplcpg String @db.VarChar(1)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitcpg String @db.VarChar(1)
+  @@id([codemp, codcpg])
+
+  @@map("condicoes_pagamento")
+}
