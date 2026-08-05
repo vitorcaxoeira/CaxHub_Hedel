@@ -1,6 +1,10 @@
 node_modules/
 dist/
 build/
+
+# Avatares enviados pelos usuarios (backend/uploads/avatars/{userId}.webp). Sao dado de
+# runtime, nao de codigo -- e num deploy com volume o diretorio vive fora do repositorio.
+uploads/
 .env
 .env.local
 *.log

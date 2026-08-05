@@ -1,20 +1,34 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../src/db/prisma";
 
-// Seed mínimo: um papel e um usuário, só pra destravar a tela de sincronização — que é a
-// única que existe hoje e fica atrás de requireRole("admin").
+// Papéis do CaxHub_Hedel. NÃO são os do CaxHub — lá são nomes de times de uma consultoria de
+// software (administrativo, consultoria, suporte, desenvolvimento), que não descrevem um grupo
+// de máquinas, importação e cobranças.
 //
-// Não traz os papéis por área do CaxHub (comercial, consultoria, suporte...): aqui não há
-// domínio de projetos pra separar, e papel que ninguém usa vira lixo de cadastro.
+// Quem abre o quê, hoje:
+//
+//   admin       tudo, incluindo Usuários e Sincronização ERP
+//   diretoria   as 6 telas financeiras
+//   financeiro  as 6 telas financeiras
+//   comercial   nada ainda — existe pro cadastro já refletir a organização
+//   consulta    nada ainda — a autorização é all-or-nothing por rota, não há modo
+//               somente-leitura dentro da tela; o nome promete mais do que a estrutura entrega
+//   system      sem tela; existe pro token de serviço de 365 dias de routes/users.ts
+//
+// Ao mudar esta lista, conferir os três lugares que precisam concordar: o `requireRole(...)`
+// do router, o `RequireRole` de App.tsx e o `roles` do grupo em layout/Sidebar.tsx.
+const PAPEIS = ["admin", "diretoria", "financeiro", "comercial", "consulta", "system"];
+
 const EMAIL_ADMIN = process.env.SEED_ADMIN_EMAIL ?? "admin@caxhub.local";
 const SENHA_ADMIN = process.env.SEED_ADMIN_SENHA ?? "admin123";
 
 async function main() {
-  const adminRole = await prisma.role.upsert({
-    where: { name: "admin" },
-    update: {},
-    create: { name: "admin" },
-  });
+  for (const nome of PAPEIS) {
+    await prisma.role.upsert({ where: { name: nome }, update: {}, create: { name: nome } });
+  }
+  console.log(`papéis garantidos: ${PAPEIS.join(", ")}`);
+
+  const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "admin" } });
 
   const existente = await prisma.user.findUnique({ where: { email: EMAIL_ADMIN } });
   if (existente) {

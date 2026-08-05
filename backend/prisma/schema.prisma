@@ -22,6 +22,20 @@ model User {
   inviteToken     String?   @unique
   inviteExpiresAt DateTime?
 
+  preferenciaFluxoCaixa PreferenciaFluxoCaixa?
+}
+
+/// Preferências do usuário na tela de Fluxo de Caixa. Hoje só o limiar de caixa mínimo, que
+/// desenha a linha de corte da curva projetada — é escolha de quem olha, não do sistema, e
+/// por isso mora por usuário e não em configuração global.
+model PreferenciaFluxoCaixa {
+  userId         Int      @id
+  limiarCaixaMin Decimal  @default(0) @db.Decimal(15, 2)
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("preferencias_fluxo_caixa")
 }
 
 model Role {

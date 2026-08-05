@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Fragment, useEffect, useState } from "react";
-import { Skeleton } from "../components/ui/Skeleton";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 interface JobSync {
   jobName: string;
