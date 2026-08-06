@@ -11,6 +11,8 @@ import { JOB_NAME as CONTA_CORRENTE_JOB, CRON_EXPR as CONTA_CORRENTE_CRON, CAMPO
 import { JOB_NAME as EMPRESA_JOB, CRON_EXPR as EMPRESA_CRON, CAMPO_DATA as EMPRESA_DATA, runEmpresaSync } from "./empresaSync";
 import { JOB_NAME as FILIAL_JOB, CRON_EXPR as FILIAL_CRON, CAMPO_DATA as FILIAL_DATA, runFilialSync } from "./filialSync";
 import { JOB_NAME as FORMA_PAGAMENTO_JOB, CRON_EXPR as FORMA_PAGAMENTO_CRON, CAMPO_DATA as FORMA_PAGAMENTO_DATA, runFormaPagamentoSync } from "./formaPagamentoSync";
+import { JOB_NAME as FORNECEDOR_JOB, CRON_EXPR as FORNECEDOR_CRON, CAMPO_DATA as FORNECEDOR_DATA, runFornecedorSync } from "./fornecedorSync";
+import { JOB_NAME as NOTA_FISCAL_ENTRADA_JOB, CRON_EXPR as NOTA_FISCAL_ENTRADA_CRON, CAMPO_DATA as NOTA_FISCAL_ENTRADA_DATA, runNotaFiscalEntradaSync } from "./notaFiscalEntradaSync";
 import { JOB_NAME as MOEDA_JOB, CRON_EXPR as MOEDA_CRON, CAMPO_DATA as MOEDA_DATA, runMoedaSync } from "./moedaSync";
 import { JOB_NAME as MOVIMENTO_CONTA_JOB, CRON_EXPR as MOVIMENTO_CONTA_CRON, CAMPO_DATA as MOVIMENTO_CONTA_DATA, runMovimentoContaSync } from "./movimentoContaSync";
 import { JOB_NAME as MOVIMENTO_TITULO_JOB, CRON_EXPR as MOVIMENTO_TITULO_CRON, CAMPO_DATA as MOVIMENTO_TITULO_DATA, runMovimentoTituloReceberSync } from "./movimentoTituloReceberSync";
@@ -71,6 +73,13 @@ export const SYNC_JOBS: SyncJobDescriptor[] = [
   { jobName: EMPRESA_JOB, displayName: "Empresas", cronExpr: EMPRESA_CRON, suportaAlterados: EMPRESA_DATA != null, run: runEmpresaSync, contarRegistros: () => prisma.empresa.count() },
   { jobName: FILIAL_JOB, displayName: "Filiais", cronExpr: FILIAL_CRON, suportaAlterados: FILIAL_DATA != null, run: runFilialSync, contarRegistros: () => prisma.filial.count() },
   { jobName: CLIENTE_JOB, displayName: "Clientes", cronExpr: CLIENTE_CRON, suportaAlterados: CLIENTE_DATA != null, run: runClienteSync, contarRegistros: () => prisma.cliente.count() },
+  // Sem FK de ninguém — pode ficar em qualquer posição do array, mas fica perto de
+  // Clientes por serem os dois únicos cadastros de "quem" (pessoa/empresa) do espelho.
+  { jobName: FORNECEDOR_JOB, displayName: "Fornecedores", cronExpr: FORNECEDOR_CRON, suportaAlterados: FORNECEDOR_DATA != null, run: runFornecedorSync, contarRegistros: () => prisma.fornecedor.count() },
+  // FK de verdade pra Fornecedor (ver schema.prisma) — PRECISA vir depois dele nesta
+  // ordem. Num banco vazio, rodar antes falharia por FK, igual ao defeito histórico de
+  // Portador/Transação vindo depois de TituloReceber.
+  { jobName: NOTA_FISCAL_ENTRADA_JOB, displayName: "Notas Fiscais de Entrada", cronExpr: NOTA_FISCAL_ENTRADA_CRON, suportaAlterados: NOTA_FISCAL_ENTRADA_DATA != null, run: runNotaFiscalEntradaSync, contarRegistros: () => prisma.notaFiscalEntrada.count() },
   { jobName: TIPO_TITULO_JOB, displayName: "Tipos de Título", cronExpr: TIPO_TITULO_CRON, suportaAlterados: TIPO_TITULO_DATA != null, run: runTipoTituloSync, contarRegistros: () => prisma.tipoTitulo.count() },
   { jobName: PORTADOR_JOB, displayName: "Portadores", cronExpr: PORTADOR_CRON, suportaAlterados: PORTADOR_DATA != null, run: runPortadorSync, contarRegistros: () => prisma.portador.count() },
   { jobName: TRANSACAO_JOB, displayName: "Transações", cronExpr: TRANSACAO_CRON, suportaAlterados: TRANSACAO_DATA != null, run: runTransacaoSync, contarRegistros: () => prisma.transacao.count() },

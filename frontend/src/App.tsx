@@ -15,6 +15,7 @@ import { Inadimplencia } from "./pages/financeiro/Inadimplencia";
 import { Clientes } from "./pages/financeiro/Clientes";
 import { FluxoCaixa } from "./pages/financeiro/FluxoCaixa";
 import { Historico } from "./pages/financeiro/Historico";
+import { NotasEntrada } from "./pages/suprimentos/NotasEntrada";
 import { ListarPedidos } from "./pages/mercado/ListarPedidos";
 import { PedidoVisualizacao } from "./pages/mercado/PedidoVisualizacao";
 import { Usuarios } from "./pages/admin/Usuarios";
@@ -58,6 +59,7 @@ export default function App() {
                   <Route path="/financeiro/clientes" element={<Clientes />} />
                   <Route path="/financeiro/fluxo-caixa" element={<FluxoCaixa />} />
                   <Route path="/financeiro/historico" element={<Historico />} />
+                  <Route path="/suprimentos/notas-entrada" element={<NotasEntrada />} />
                 </Route>
 
                 <Route element={<RequireRole roles={PAPEIS_MERCADO} />}>

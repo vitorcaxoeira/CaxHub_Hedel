@@ -45,6 +45,12 @@ const ATALHOS: Atalho[] = [
     roles: ["admin", "diretoria", "financeiro"],
   },
   {
+    to: "/suprimentos/notas-entrada",
+    titulo: "Notas de Entrada",
+    descricao: "Compras dos fornecedores do grupo — lista e resumo.",
+    roles: ["admin", "diretoria", "financeiro"],
+  },
+  {
     to: "/mercado/pedidos",
     titulo: "Listar Pedidos",
     descricao: "Carteira de pedidos do grupo, por lista, por cliente ou em resumo.",

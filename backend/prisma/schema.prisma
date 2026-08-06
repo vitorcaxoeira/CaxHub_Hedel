@@ -115,6 +115,87 @@ model Cliente {
   @@map("clientes")
 }
 
+// Espelho local da tabela E095FOR do Senior ERP (Cadastros - Fornecedores).
+//
+// Recorte de 16 dos 150 campos da tabela real — identidade, endereço e situação, no
+// mesmo espírito de Cliente/Representante. Fora ficam ~130 campos fiscais de baixíssimo
+// uso (regime tributário, PIS/Cofins, DIRF, CBS/IBS, WMS, ANP...) e os 2 campos USU_
+// (USU_ReeDesp, USU_GrpFor), que não entram por definição de recorte do projeto — só
+// tabela padrão. Sem FK: nenhum outro model referencia CodFor hoje.
+model Fornecedor {
+  codfor Int    @id
+  nomfor String @db.VarChar(100)
+  apefor String @db.VarChar(50)
+  /// Domínio "LJurFis": J=Pessoa Jurídica, F=Pessoa Física
+  tipfor String @db.VarChar(1)
+  /// Domínio "LTipMe2": I=Interno (Nacional), E=Externo (Exterior), P=Prospect.
+  tipmer String  @db.VarChar(1)
+  codram String? @db.VarChar(5)
+  insest String? @db.VarChar(25)
+  cgccpf BigInt?
+  endfor String? @db.VarChar(100)
+  cplend String? @db.VarChar(200)
+  cepfor Int?
+  baifor String? @db.VarChar(75)
+  cidfor String? @db.VarChar(60)
+  sigufs String? @db.VarChar(2)
+  codpai String? @db.VarChar(4)
+  /// Domínio "LSitReg": A=Ativo, I=Inativo
+  sitfor String @db.VarChar(1)
+
+  notasFiscaisEntrada NotaFiscalEntrada[]
+
+  @@map("fornecedores")
+}
+
+// Espelho local da tabela E440NFC do Senior ERP (Compras - Notas Fiscais de Entrada -
+// Dados Gerais).
+//
+// Recorte de 16 dos 251 campos da tabela real — identidade, datas, pagamento, valor e
+// situação, no mesmo espírito do recorte de Pedido (E120PED). Fora ficam ~235 campos,
+// quase todos cálculo fiscal (ICMS/IPI/PIS/Cofins em dezenas de variantes, DIRF, CBS/IBS,
+// dados de importação, CT-e...).
+//
+// CodCpg/CodFpg/CodMoe ficam SOLTOS, sem @relation — mesmo padrão que Pedido usa para os
+// mesmos três campos, resolvido por código de aplicação quando precisar. Dois têm
+// sentinela confirmado contra a origem, não são órfãos de FK: CodFpg=0 e CodMoe=' '
+// (espaço, não NULL) significam "não informado" em 83.513 e 40.273 das 86.535 linhas —
+// o sync converte os dois para NULL antes de gravar (ver notaFiscalEntradaSync.ts).
+//
+// CodFor é a exceção: FK de verdade para Fornecedor, como TituloReceber -> Cliente.
+// Confirmado 0 órfãos nas 86.535 linhas e o campo é obrigatório — mas isso significa que
+// fornecedor-sync PRECISA vir antes deste job na ordem de sync/registry.ts (é essa ordem,
+// não o horário do cron, que "Sincronizar todas as tabelas" respeita).
+model NotaFiscalEntrada {
+  codemp Int
+  codfil Int
+  codfor Int
+  numnfc Int
+  codsnf String @db.VarChar(3)
+  /// Domínio "LTipNfe": 1=NF Entrada, 2=Devolução (NF do Cliente), 3=Devolução (NF de Saída), 4=Retorno (Industrialização), 5=Retorno (Outros), 6=NF Produtor, 7=NF Geração Manual, 8=NF Frete/Serviços Agregados, 9=NF Acerto, 10=NF Acerto (NF Saída), 11=Transferência entre Empresas/Filiais
+  tipnfe Int?
+  datent DateTime? @db.Date
+  datemi DateTime  @db.Date
+  // Data da geração do registro — nunca veio nula nas 86.535 linhas conferidas contra a
+  // origem, apesar de o dicionário marcar como anulável. Usado como campo de incremental
+  // (CAMPO_DATA), mesma escolha e mesma incerteza documentada em tituloReceberSync.ts:
+  // pode não capturar toda mudança de situação, só geração ou alteração.
+  datger DateTime? @db.Date
+  codcpg String  @db.VarChar(6)
+  codfpg Int?
+  codmoe String? @db.VarChar(3)
+  vlrliq Decimal? @db.Decimal(15, 2)
+  /// Domínio "LSitNfs": 1=Digitada, 2=Fechada, 3=Cancelada, 4=Documento Fiscal Emitido (saída), 5=Aguardando Fechamento (pós-saída), 6=Aguardando Integração WMS, 7=Digitada Integração, 8=Agrupada
+  sitnfc String @db.VarChar(1)
+  codmot Int?
+  chvnel String? @db.VarChar(50)
+
+  fornecedor Fornecedor @relation(fields: [codfor], references: [codfor])
+
+  @@id([codemp, codfil, codfor, numnfc, codsnf])
+  @@map("notas_fiscais_entrada")
+}
+
 // Espelho local da tabela E002TPT do Senior ERP (Tabelas - Tipos de Título).
 model TipoTitulo {
   codtpt String  @id @db.VarChar(3)

@@ -37,6 +37,11 @@ const groups: NavGroup[] = [
     roles: ["admin", "diretoria", "financeiro"],
   },
   {
+    label: "Suprimentos",
+    items: [{ to: "/suprimentos/notas-entrada", label: "Notas de Entrada" }],
+    roles: ["admin", "diretoria", "financeiro"],
+  },
+  {
     label: "Mercado",
     items: [{ to: "/mercado/pedidos", label: "Listar Pedidos" }],
     roles: ["admin", "diretoria", "comercial"],

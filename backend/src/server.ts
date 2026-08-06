@@ -13,10 +13,13 @@ import { fluxoCaixaRouter } from "./routes/fluxoCaixa";
 import { historicoFinanceiroRouter } from "./routes/historicoFinanceiro";
 import { pedidosRouter } from "./routes/pedidos";
 import { pedidoVisualizacaoRouter } from "./routes/pedidoVisualizacao";
+import { notasFiscaisEntradaRouter } from "./routes/notasFiscaisEntrada";
 
 import { scheduleEmpresaSync } from "./sync/empresaSync";
 import { scheduleFilialSync } from "./sync/filialSync";
 import { scheduleClienteSync } from "./sync/clienteSync";
+import { scheduleFornecedorSync } from "./sync/fornecedorSync";
+import { scheduleNotaFiscalEntradaSync } from "./sync/notaFiscalEntradaSync";
 import { scheduleTipoTituloSync } from "./sync/tipoTituloSync";
 import { scheduleTituloReceberSync } from "./sync/tituloReceberSync";
 import { scheduleMovimentoTituloReceberSync } from "./sync/movimentoTituloReceberSync";
@@ -62,6 +65,7 @@ app.use("/financeiro/historico", historicoFinanceiroRouter);
 
 app.use("/pedidos", pedidosRouter);
 app.use("/pedido-visualizacao", pedidoVisualizacaoRouter);
+app.use("/notas-fiscais-entrada", notasFiscaisEntradaRouter);
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -73,6 +77,8 @@ app.listen(PORT, () => {
   scheduleEmpresaSync();
   scheduleFilialSync();
   scheduleClienteSync();
+  scheduleFornecedorSync();
+  scheduleNotaFiscalEntradaSync();
   scheduleTipoTituloSync();
   schedulePortadorSync();
   scheduleTransacaoSync();
